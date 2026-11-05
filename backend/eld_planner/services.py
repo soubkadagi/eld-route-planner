@@ -2,7 +2,7 @@ import requests
 from datetime import datetime, timedelta
 
 def geocode(location_str):
-    headers = {'User-Agent': 'eld-route-app/1.0'}
+    headers = {'User-Agent': 'ELDRoutingApp/1.0 (contact@example.com)'}
     url = f"https://nominatim.openstreetmap.org/search?q={location_str}&format=json&limit=1"
     
     r = requests.get(url, headers=headers)
