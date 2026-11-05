@@ -6,19 +6,19 @@ from .services import plan_eld_trip
 class PlanTripView(APIView):
     def post(self, request):
         try:
-            curr = request.data.get('current_location')
-            pick = request.data.get('pickup_location')
-            drop = request.data.get('dropoff_location')
-            cycle = float(request.data.get('current_cycle_used', 0.0))
+            current_loc = request.data.get('current_location')
+            pickup_loc = request.data.get('pickup_location')
+            dropoff_loc = request.data.get('dropoff_location')
+            cycle_used = float(request.data.get('cycle_used', 0.0))
 
-            if not curr or not pick or not drop:
+            if not current_loc or not pickup_loc or not dropoff_loc:
                 return Response(
-                    {'error': 'All location fields are required.'},
+                    {'error': 'current_location, pickup_location, and dropoff_location are required.'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-            res = plan_eld_trip(curr, pick, drop, cycle)
-            return Response(res, status=status.HTTP_200_OK)
+            result = plan_eld_trip(current_loc, pickup_loc, dropoff_loc, cycle_used)
+            return Response(result, status=status.HTTP_200_OK)
+
         except Exception as e:
-            print(f"Error processing trip: {e}")
-            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
