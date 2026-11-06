@@ -8,13 +8,13 @@ export default function App() {
     current_location: 'Chicago, IL',
     pickup_location: 'Indianapolis, IN',
     dropoff_location: 'Dallas, TX',
-    current_cycle_used: 15
+    cycle_used: 15
   });
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
 
-  const API_URL = process.env.REACT_APP_API_URL || 'http://127.0.0.1:8000';
+  const API_URL = process.env.REACT_APP_API_URL || 'https://eld-route-planner-2m3m.onrender.com';
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -27,7 +27,12 @@ export default function App() {
     setError('');
 
     try {
-      const res = await axios.post(`${API_URL}/api/plan-trip/`, form);
+      const res = await axios.post(`${API_URL}/api/plan-trip/`, {
+        current_location: form.current_location,
+        pickup_location: form.pickup_location,
+        dropoff_location: form.dropoff_location,
+        cycle_used: Number(form.cycle_used)
+      });
       setResult(res.data);
     } catch (err) {
       console.error(err);
@@ -38,7 +43,7 @@ export default function App() {
   };
 
   return (
-    <div style={{ maxWidth: '980px', margin: '24px auto', padding: '0 16px' }}>
+    <div style={{ maxWidth: '980px', margin: '24px auto', padding: '0 16px', fontFamily: 'sans-serif' }}>
       <header style={{ marginBottom: '20px' }}>
         <h2 style={{ margin: 0, color: '#0f172a' }}>FMCSA ELD Route & Log Generator</h2>
         <p style={{ margin: '4px 0 0', color: '#64748b', fontSize: '14px' }}>
@@ -61,7 +66,7 @@ export default function App() {
         </div>
         <div>
           <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '4px' }}>Cycle Used (Hrs)</label>
-          <input type="number" step="0.5" name="current_cycle_used" value={form.current_cycle_used} onChange={handleChange} style={{ width: '90%', padding: '8px', border: '1px solid #cbd5e1', borderRadius: '4px' }} required />
+          <input type="number" step="0.5" name="cycle_used" value={form.cycle_used} onChange={handleChange} style={{ width: '90%', padding: '8px', border: '1px solid #cbd5e1', borderRadius: '4px' }} required />
         </div>
         <div style={{ display: 'flex', alignItems: 'flex-end' }}>
           <button type="submit" disabled={loading} style={{ width: '100%', padding: '9px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 600 }}>
@@ -81,11 +86,11 @@ export default function App() {
             </div>
             <div style={{ flex: 1, padding: '12px', background: '#eff6ff', borderRadius: '6px', border: '1px solid #bfdbfe' }}>
               <div style={{ fontSize: '12px', color: '#1e40af' }}>Est. Drive Time</div>
-              <div style={{ fontSize: '20px', fontWeight: 'bold' }}>{result.total_drive_hours} hrs</div>
+              <div style={{ fontSize: '20px', fontWeight: 'bold' }}>{result.total_driving_hours} hrs</div>
             </div>
             <div style={{ flex: 1, padding: '12px', background: '#eff6ff', borderRadius: '6px', border: '1px solid #bfdbfe' }}>
-              <div style={{ fontSize: '12px', color: '#1e40af' }}>Daily Sheets</div>
-              <div style={{ fontSize: '20px', fontWeight: 'bold' }}>{result.summary.total_days} Day(s)</div>
+              <div style={{ fontSize: '12px', color: '#1e40af' }}>Cycle Remaining</div>
+              <div style={{ fontSize: '20px', fontWeight: 'bold' }}>{result.cycle_remaining} hrs</div>
             </div>
           </div>
 
@@ -96,7 +101,7 @@ export default function App() {
 
           <div>
             <h3 style={{ fontSize: '16px', color: '#334155' }}>Generated Driver Logs</h3>
-            {result.log_sheets.map((sheet, idx) => (
+            {result.daily_logs.map((sheet, idx) => (
               <EldLogSheet key={sheet.date} sheet={sheet} dayIndex={idx} />
             ))}
           </div>
