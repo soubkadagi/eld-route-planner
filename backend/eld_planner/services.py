@@ -1,3 +1,88 @@
+import requests
+from datetime import datetime, timedelta
+
+def geocode(location_str):
+    url = "https://nominatim.openstreetmap.org/search"
+    params = {
+        'q': str(location_str).strip(),
+        'format': 'json',
+        'limit': 1
+    }
+    headers = {
+        'User-Agent': 'FMCSA-ELD-Route-Planner/1.0 (contact@eldplanner.local)'
+    }
+    r = requests.get(url, params=params, headers=headers, timeout=10)
+    if r.status_code != 200:
+        raise ValueError(f"Geocoding service returned status {r.status_code}")
+    data = r.json()
+    if not data:
+        raise ValueError(f"Could not locate address: {location_str}")
+    return float(data[0]['lat']), float(data[0]['lon']), data[0]['display_name']
+
+
+def get_osrm_route(start, pickup, drop):
+    coords = f"{start[1]},{start[0]};{pickup[1]},{pickup[0]};{drop[1]},{drop[0]}"
+    url = f"https://router.project-osrm.org/route/v1/driving/{coords}?overview=full&geometries=geojson"
+    res = requests.get(url, timeout=15)
+    if res.status_code != 200:
+        raise Exception("Routing service unavailable")
+    data = res.json()
+    if data.get('code') != 'Ok':
+        raise Exception("Routing query failed via OSRM")
+    route = data['routes'][0]
+    miles = route['distance'] * 0.000621371
+    duration_hrs = route['duration'] / 3600.0
+    return miles, duration_hrs, route['geometry']
+
+
+def split_timeline_into_days(timeline_events):
+    days = []
+    if not timeline_events:
+        return days
+
+    first_start = timeline_events[0]['start']
+    current_day_date = first_start.date()
+    day_start = datetime(current_day_date.year, current_day_date.month, current_day_date.day, 0, 0, 0)
+    day_end = day_start + timedelta(days=1)
+
+    while True:
+        day_events = []
+        for ev in timeline_events:
+            s = max(ev['start'], day_start)
+            e = min(ev['end'], day_end)
+            if s < e:
+                start_hour = (s - day_start).total_seconds() / 3600.0
+                end_hour = (e - day_start).total_seconds() / 3600.0
+                day_events.append({
+                    'status': ev['status'],
+                    'start_hour': round(start_hour, 2),
+                    'end_hour': round(end_hour, 2),
+                    'duration': round(end_hour - start_hour, 2),
+                    'location': ev.get('location', '')
+                })
+
+        totals = {'OFF': 0.0, 'SB': 0.0, 'D': 0.0, 'ON': 0.0}
+        for de in day_events:
+            st = de['status']
+            if st in totals:
+                totals[st] = round(totals[st] + de['duration'], 2)
+
+        days.append({
+            'date': current_day_date.strftime("%Y-%m-%d"),
+            'events': day_events,
+            'totals': totals
+        })
+
+        if day_end >= timeline_events[-1]['end']:
+            break
+
+        current_day_date += timedelta(days=1)
+        day_start = day_end
+        day_end = day_start + timedelta(days=1)
+
+    return days
+
+
 def plan_eld_trip(current_loc, pickup_loc, dropoff_loc, cycle_used=0.0):
     start_lat, start_lon, start_name = geocode(current_loc)
     pickup_lat, pickup_lon, pickup_name = geocode(pickup_loc)
